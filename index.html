@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Underwater Sensor Data Logger</title>
+    <style>
+        /* General Styles */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f8ff;
+            color: #333;
+            overflow-y: auto;  /* Enable vertical scrolling */
+            height: 100vh;     /* Ensure the body takes full screen height */
+            box-sizing: border-box;
+        }
+        header, .intro-screen, .container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        button {
+            background-color: #0077be;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 5px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: 0.3s;
+            margin-top: 20px;
+        }
+        button:hover {
+            background-color: #005f8c;
+        }
+
+        /* Intro Screen */
+        .intro-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #001f3f;
+            color: white;
+            text-align: center;
+            animation: fadeIn 2s ease;
+        }
+        .intro-title {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        .intro-credits {
+            margin-top: 20px;
+            font-size: 1.2em;
+            color: #aaaaaa;
+        }
+        .hidden {
+            display: none;
+        }
+
+        /* Main Container */
+        .container {
+            padding: 20px;
+            margin-top: 100px;
+            max-height: 90vh; /* Prevent the main container from overflowing */
+            overflow-y: auto; /* Allow scrolling inside the container */
+        }
+        header {
+            background-color: #0077be;
+            color: white;
+            width: 100%;
+            padding: 20px;
+            position: fixed;
+            top: 0;
+        }
+        header h1 {
+            font-size: 24px;
+        }
+
+        /* Sensor Heatmap */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .sensor {
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 10px;
+            text-align: center;
+            background-color: #fff;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            cursor: pointer;
+        }
+        .sensor:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.2);
+        }
+        .alert {
+            color: red;
+            font-weight: bold;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 300px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+        }
+        .modal h3 {
+            margin-top: 0;
+        }
+        .modal-close {
+            background-color: #ff0000;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+
+        /* Overlay */
+        .overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Intro Screen -->
+    <div class="intro-screen" id="intro">
+        <div>
+            <h1 class="intro-title">Underwater Sensor Data Logger and Analyzer</h1>
+            <p>Simulate a network of underwater sensors to collect and analyze environmental data. Detect patterns, anomalies, and ecological changes in real-time.</p>
+            <button onclick="startProject()">Explore Project</button>
+            <p class="intro-credits">Created and Coded by Stefanos Bantekas</p>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <header>
+        <h1>Underwater Sensor Data Logger</h1>
+    </header>
+    <div class="container hidden" id="main-container">
+        <div>
+            <button onclick="simulateSensors()">Start Simulation</button>
+            <button onclick="stopSimulation()">Stop Simulation</button>
+        </div>
+        <div id="output"></div>
+        <div id="alerts"></div>
+        <div id="heatmap" class="grid"></div>
+    </div>
+
+    <!-- Modal -->
+    <div class="overlay" id="overlay" onclick="closeModal()"></div>
+    <div class="modal" id="modal">
+        <h3>Sensor Details</h3>
+        <p id="modal-content"></p>
+        <button class="modal-close" onclick="closeModal()">Close</button>
+    </div>
+
+    <script>
+        // Intro Screen Logic
+        function startProject() {
+            document.getElementById('intro').classList.add('hidden');
+            document.getElementById('main-container').classList.remove('hidden');
+        }
+
+        // Define sensor grid
+        const gridSize = 5; // 5x5 grid
+        let sensors = [];
+        let interval;
+
+        function initializeSensors() {
+            sensors = [];
+            for (let i = 0; i < gridSize * gridSize; i++) {
+                sensors.push({
+                    temperature: Math.random() * 20 + 10, // Random temp between 10-30°C
+                    salinity: Math.random() * 10 + 30,   // Random salinity 30-40 PSU
+                    pH: Math.random() * 2 + 7,          // Random pH 7-9
+                    depth: Math.random() * 2000 + 100, // Random depth between 100m to 2100m
+                    type: i % 2 === 0 ? 'Temperature' : 'pH', // Random type (for example, even ones measure temperature, odd ones pH)
+                });
+            }
+        }
+
+        function displayHeatmap() {
+            const heatmap = document.getElementById('heatmap');
+            heatmap.innerHTML = '';
+            sensors.forEach((sensor, index) => {
+                const sensorDiv = document.createElement('div');
+                sensorDiv.classList.add('sensor');
+                sensorDiv.innerHTML = `<strong>Sensor ${index + 1}</strong>`;
+                sensorDiv.onclick = () => showModal(index);
+                heatmap.appendChild(sensorDiv);
+            });
+        }
+
+        function analyzeData() {
+            const alerts = document.getElementById('alerts');
+            alerts.innerHTML = '<h3>Environmental Alerts</h3>';
+            sensors.forEach((sensor, index) => {
+                if (sensor.temperature > 30) {
+                    alerts.innerHTML += `<p class="alert">Sensor ${index + 1}: Coral Bleaching Risk (High Temp: ${sensor.temperature.toFixed(2)}°C)</p>`;
+                }
+                if (sensor.pH < 7.5) {
+                    alerts.innerHTML += `<p class="alert">Sensor ${index + 1}: Acidification Detected (Low pH: ${sensor.pH.toFixed(2)})</p>`;
+                }
+            });
+        }
+
+        function simulateSensors() {
+            initializeSensors();
+            clearInterval(interval);
+            interval = setInterval(() => {
+                sensors = sensors.map(sensor => ({
+                    temperature: sensor.temperature + Math.random() * 2 - 1, // Simulate changes
+                    salinity: sensor.salinity + Math.random() * 2 - 1,
+                    pH: sensor.pH + Math.random() * 0.2 - 0.1,
+                    depth: sensor.depth, // Keep depth constant for simplicity
+                    type: sensor.type,
+                }));
+                displayHeatmap();
+                analyzeData();
+            }, 2000);
+        }
+
+        function stopSimulation() {
+            clearInterval(interval);
+        }
+
+        // Modal and Sensor Info
+        function showModal(index) {
+            const modalContent = document.getElementById('modal-content');
+            const sensor = sensors[index];
+            modalContent.innerHTML = `
+                <strong>Sensor ${index + 1}</strong><br>
+                <strong>Depth:</strong> ${sensor.depth.toFixed(2)} meters<br>
+                <strong>Type:</strong> ${sensor.type}<br>
+                <strong>Temperature:</strong> ${sensor.temperature.toFixed(2)}°C<br>
+                <strong>Salinity:</strong> ${sensor.salinity.toFixed(2)} PSU<br>
+                <strong>pH Level:</strong> ${sensor.pH.toFixed(2)}<br>
+                <strong>Working Principle:</strong> This sensor measures the environmental parameters such as temperature and pH to detect potential ecological changes in the ocean. Its depth range allows it to monitor different oceanic layers.
+            `;
+            document.getElementById('overlay').style.display = 'block';
+            document.getElementById('modal').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('overlay').style.display = 'none';
+            document.getElementById('modal').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
